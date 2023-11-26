@@ -1,0 +1,6 @@
+
+
+class Console {
+    private: 
+        int 
+};
