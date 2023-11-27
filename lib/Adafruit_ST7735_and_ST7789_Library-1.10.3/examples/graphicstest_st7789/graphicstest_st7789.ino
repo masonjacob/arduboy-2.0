@@ -1,56 +1,99 @@
+/**************************************************************************
+  This is a library for several Adafruit displays based on ST77* drivers.
+
+  This example works with the 1.14" TFT breakout
+    ----> https://www.adafruit.com/product/4383
+  The 1.3" TFT breakout
+    ----> https://www.adafruit.com/product/4313
+  The 1.47" TFT breakout
+    ----> https://www.adafruit.com/product/5393
+  The 1.54" TFT breakout
+    ----> https://www.adafruit.com/product/3787
+  The 1.69" TFT breakout
+    ----> https://www.adafruit.com/product/5206
+  The 1.9" TFT breakout
+    ----> https://www.adafruit.com/product/5394
+  The 2.0" TFT breakout
+    ----> https://www.adafruit.com/product/4311
+
+
+  Check out the links above for our tutorials and wiring diagrams.
+  These displays use SPI to communicate, 4 or 5 pins are required to
+  interface (RST is optional).
+
+  Adafruit invests time and resources providing this open source code,
+  please support Adafruit and open-source hardware by purchasing
+  products from Adafruit!
+
+  Written by Limor Fried/Ladyada for Adafruit Industries.
+  MIT license, all text above must be included in any redistribution
+ **************************************************************************/
+
 #include <Adafruit_GFX.h>    // Core graphics library
-#include <Adafruit_ST7735.h> // Hardware-specific library
-#include <Fonts/FreeSerifBold18pt7b.h>
+#include <Adafruit_ST7789.h> // Hardware-specific library for ST7789
 #include <SPI.h>
-#include <AudioZero.h>
-// For the breakout, you can use any 2 or 3 pins
-// These pins will also work for the 1.8" TFT shield
-#define TFT_CS     9
-#define TFT_RST    8  // you can also connect this to the Arduino reset
-                      // in which case, set this #define pin to 0!
-#define TFT_DC     14
 
-Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS,  TFT_DC, TFT_RST);
+#if defined(ARDUINO_FEATHER_ESP32) // Feather Huzzah32
+  #define TFT_CS         14
+  #define TFT_RST        15
+  #define TFT_DC         32
 
-// Color definitions
-#define BLACK    0x0000
-#define BLUE     0x001F
-#define RED      0xF800
-#define GREEN    0x07E0
-#define CYAN     0x07FF
-#define MAGENTA  0xF81F
-#define YELLOW   0xFFE0 
-#define WHITE    0xFFFF
+#elif defined(ESP8266)
+  #define TFT_CS         4
+  #define TFT_RST        16
+  #define TFT_DC         5
+
+#else
+  // For the breakout board, you can use any 2 or 3 pins.
+  // These pins will also work for the 1.8" TFT shield.
+  #define TFT_CS        10
+  #define TFT_RST        9 // Or set to -1 and connect to Arduino RESET pin
+  #define TFT_DC         8
+#endif
+
+// OPTION 1 (recommended) is to use the HARDWARE SPI pins, which are unique
+// to each board and not reassignable. For Arduino Uno: MOSI = pin 11 and
+// SCLK = pin 13. This is the fastest mode of operation and is required if
+// using the breakout board's microSD card.
+
+Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);
+
+// OPTION 2 lets you interface the display using ANY TWO or THREE PINS,
+// tradeoff being that performance is not as fast as hardware SPI above.
+//#define TFT_MOSI 11  // Data out
+//#define TFT_SCLK 13  // Clock out
+
+//Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
+
 
 float p = 3.1415926;
 
 void setup(void) {
-
   Serial.begin(9600);
-
-  // Audio Setup
-  // setup SD-card
-  Serial.print("Initializing SD card...");
-  if (!SD.begin(4)) {
-    Serial.println(" failed!");
-    while(true);
-  }
-  Serial.println(" done.");
-
-  // 44100kHz stereo => 88200 sample rate
-  AudioZero.begin(2*44100);
-
-  // Display Setup
   Serial.print(F("Hello! ST77xx TFT Test"));
 
-  // Use this initializer if using a 1.8" TFT screen:
-  tft.initR(INITR_BLACKTAB);      // Init ST7735S chip, black tab
+  // Use this initializer (uncomment) if using a 1.3" or 1.54" 240x240 TFT:
+  tft.init(240, 240);           // Init ST7789 240x240
+
+  // OR use this initializer (uncomment) if using a 1.69" 280x240 TFT:
+  //tft.init(240, 280);           // Init ST7789 280x240
+
+  // OR use this initializer (uncomment) if using a 2.0" 320x240 TFT:
+  //tft.init(240, 320);           // Init ST7789 320x240
+
+  // OR use this initializer (uncomment) if using a 1.14" 240x135 TFT:
+  //tft.init(135, 240);           // Init ST7789 240x135
+  
+  // OR use this initializer (uncomment) if using a 1.47" 172x320 TFT:
+  //tft.init(172, 320);           // Init ST7789 172x320
+
+  // OR use this initializer (uncomment) if using a 1.9" 170x320 TFT:
+  //tft.init(170, 320);           // Init ST7789 170x320
 
   // SPI speed defaults to SPI_DEFAULT_FREQ defined in the library, you can override it here
   // Note that speed allowable depends on chip and quality of wiring, if you go too fast, you
   // may end up with a black screen some times, or all the time.
   //tft.setSPISpeed(40000000);
-
   Serial.println(F("Initialized"));
 
   uint16_t time = millis();
@@ -106,7 +149,6 @@ void setup(void) {
 }
 
 void loop() {
-
   tft.invertDisplay(true);
   delay(500);
   tft.invertDisplay(false);
