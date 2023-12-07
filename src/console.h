@@ -8,7 +8,13 @@
 #include <Adafruit_ST7735.h> // Hardware-specific library
 #include <Fonts/FreeSerifBold18pt7b.h>
 #include <SPI.h>
+#include <SDFat.h>
+#include <Adafruit_ImageReader.h> 
+#include <anyrtttl.h>
+#include <binrtttl.h>
+#include <pitches.h>
 #include "display-test.h"
+
 
 // Define Joystick Pins
 #define JS_X A6
@@ -27,6 +33,8 @@
 
 // Define Audio Output Pin
 #define AUDIO_OUT  A5
+
+const char* frosty_the_snowman = "frosty:d=4,o=5,b=160:2g,e.,8f,g,2c6,8h,8c6,d6,c6,h,a,2g.,8h,8c6,d6,c6,h,8a,8a,g,c6,e,8g,8a,g,f,e,f,1g";
 
 class Joystick {
     private:
@@ -124,21 +132,29 @@ class Console {
     private: 
     public: 
         Adafruit_ST7735* display;
+        SdFat* SD;
+        Adafruit_ImageReader* reader;
         Joystick* joystick;
         Button* a_button;
         Button* b_button;       
         Buzzer* speaker;
         uint16_t test_background_color = ST77XX_BLACK;
+        uint16_t clear_background_color = ST77XX_BLACK;
         uint16_t test_font_color = WHITE;
+
 
         //State
         JoyStick_Position joystick_position = Middle;
         bool j_button_state = false;
         bool a_button_state = false;
         bool b_button_state = false;
+        bool image_state = false;
+        bool music_state = false;
 
         Console() 
         :   display(new Adafruit_ST7735(TFT_CS,  TFT_DC, TFT_RST)), 
+            SD(new SdFat()),
+            reader(new Adafruit_ImageReader(*SD)),
             joystick(new Joystick(JS_X, JS_Y, JS_BUTTON)), 
             a_button(new Button(A_BUTTON)),
             b_button(new Button(B_BUTTON)),
@@ -147,12 +163,17 @@ class Console {
         }
         void init() {
             this->display->initR(INITR_BLACKTAB);
+            this->display->fillScreen(this->clear_background_color);
             this->display->setRotation(3);
             this->joystick->init();
             this->speaker->init();
             this->a_button->begin();
             this->b_button->begin();
             this->joystick_position = this->joystick->current_direction();
+            if(!SD->begin(CARD_CS, SD_SCK_MHZ(25))) { // ESP32 requires 25 MHz limit
+                Serial.println(F("SD begin() failed"));
+            for(;;); // Fatal error, do not continue
+            }
         }
         void test_display() {
             testlines(this->display, GREEN);
@@ -162,7 +183,21 @@ class Console {
             bool j_button_pressed = this->joystick->button->read();
             bool a_button_pressed = this->a_button->read();
             bool b_button_pressed = this->b_button->read();
-            if (current_position != this->joystick_position || j_button_pressed != this->j_button_state || a_button_pressed != this->a_button_state || b_button_pressed != this->b_button_state) {
+            bool previous_image_state = this->image_state;
+            
+            if (a_button_pressed && b_button_pressed && a_button_pressed != a_button_state && b_button_pressed != b_button_state) {
+                image_state = !image_state;
+            }
+
+            if (image_state) {
+                anyrtttl::nonblocking::play();
+                if (image_state != previous_image_state) {
+                    //this->music_state = true;
+                    anyrtttl::nonblocking::begin(AUDIO_OUT, frosty_the_snowman);
+                    this->drawImage("/frosty-the-snowman.bmp", 0, 0);
+                }
+            } else if (!image_state && current_position != this->joystick_position || j_button_pressed != this->j_button_state || a_button_pressed != this->a_button_state || b_button_pressed != this->b_button_state) {
+                //this->music_state = false;
                 this->joystick_position = current_position;
                 this->j_button_state = j_button_pressed;
                 this->a_button_state = a_button_pressed;
@@ -175,7 +210,22 @@ class Console {
                 testdrawtext(this->display, print_text, test_font_color, test_background_color);
             }
         }
-
+        void clear() {
+            this->display->fillScreen(clear_background_color);
+        }
+        void drawBitmap(int16_t x, int16_t y, uint8_t *bitmap, int16_t w,
+                        int16_t h, uint16_t color, uint16_t bg) {
+        this->display->drawBitmap(x, y, bitmap, w, h, color, bg);
+        }
+        void drawPixel(int16_t x, int16_t y, uint16_t color) {
+            this->display->drawPixel(x, y, color);
+        }
+        uint8_t getInput(){
+            
+        }
+        ImageReturnCode drawImage(const char *filename, int16_t x, int16_t y) {
+            this->reader->drawBMP(filename, *(this->display), x, y);
+        }
 };
 
 #endif //__CONSOLE__

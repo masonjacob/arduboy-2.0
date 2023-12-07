@@ -15,11 +15,11 @@ enum JoyStick_Position {
 
 char* direction_text[] = {"Middle", "Top", "Top Right", "Right", "Bottom Right", "Bottom", "Bottom Left", "Left", "Top Left"};
 
-// enum Game_Direction {
-//     North, 
-//     East,
-//     South,
-//     West
-// };
+enum Direction {
+    North, 
+    East,
+    South,
+    West
+};
 
 #endif /* __DIRECTION__ */
